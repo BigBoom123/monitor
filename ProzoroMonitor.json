@@ -2,11 +2,11 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "9f3f3620-6cd9-4bb0-9114-f12bd10efa97",
+      "id": "53728661-acc9-4c0a-b675-166348d24011",
       "name": "Start",
       "type": "n8n-nodes-base.start",
       "typeVersion": 1,
-      "position": [-1040, 48]
+      "position": [-1120, 80]
     },
     {
       "parameters": {
@@ -18,11 +18,11 @@
           ]
         }
       },
-      "id": "4412310b-c2fc-4b54-8fdf-11aafbbc92f7",
+      "id": "467d858c-7568-4d13-ab75-77a3081ff7db",
       "name": "Run every hour",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [-848, 48]
+      "position": [-928, 80]
     },
     {
       "parameters": {
@@ -31,22 +31,28 @@
           "pagination": {}
         }
       },
-      "id": "c42bb73c-763f-4691-89b2-841386430ca4",
+      "id": "25c02b3c-f716-4743-8230-c995047fd391",
       "name": "HTTP Request: Get Tender List",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [-448, 48]
+      "position": [-528, 80]
     },
     {
       "parameters": {
         "url": "=https://public-api-sandbox.prozorro.gov.ua/api/2.5/tenders/{{ $json.id }}",
-        "options": {}
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1
+            }
+          }
+        }
       },
-      "id": "383ac078-7dfd-4f8a-899e-56d7f60b9fd3",
+      "id": "5f2495e0-af62-4794-b3a0-6c576c003e2d",
       "name": "HTTP Request: Get Tender Details",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [-240, 48]
+      "position": [-48, 80]
     },
     {
       "parameters": {
@@ -67,31 +73,31 @@
           ]
         }
       },
-      "id": "84ce1169-81d6-4c79-8a65-2fc7df37190a",
+      "id": "068525b5-c587-4b8e-9169-b4df0c68da8c",
       "name": "Filter by Region & Value",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [-48, 48]
+      "position": [256, 80]
     },
     {
       "parameters": {
-        "jsCode": "const lastItem = $items.at(-1);\n$workflow.store.set('lastSyncDate', lastItem.json.data.dateModified);"
+        "jsCode": "const workflowStaticData = $getWorkflowStaticData('global');\nconst lastItem = $items.at(-1);\nworkflowStaticData.lastSyncDate = lastItem.json.data.dateModified;\nreturn items;"
       },
-      "id": "eb0b63f2-e8c0-46f3-a428-89174471d99a",
+      "id": "1b70092b-fd62-4d2a-947b-6a9b87e69834",
       "name": "Save Last Sync Date",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [304, -128]
+      "position": [608, -96]
     },
     {
       "parameters": {
-        "jsCode": "// Получаем сохраненную дату или используем дату по умолчанию\nconst lastSyncDate = $workflow.store.get('lastSyncDate') || '2000-01-01T00:00:00';\n\n// Возвращаем ее для следующего узла\nreturn { lastSyncDate };"
+        "jsCode": "// Получаем объект статических данных с помощью новой функции\nconst staticData = $getWorkflowStaticData('global');\n\n// Получаем дату, обращаясь к свойству напрямую\nconst lastSyncDate = staticData.lastSyncDate || '2000-01-01T00:00:00';\n\n// Возвращаем результат для следующего узла\nreturn { lastSyncDate };"
       },
-      "id": "5ca581fa-0dd7-4fea-95b2-4bebddc6f839",
+      "id": "dbbbd01a-9753-4214-a894-3b821ed7e774",
       "name": "Get Last Sync Date",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-640, 48]
+      "position": [-720, 80]
     },
     {
       "parameters": {
@@ -99,11 +105,11 @@
         "text": "=*Новий тендер!*\n\n*Назва:* {{$json.data.title}}\n\n*Бюджет:* {{$json.data.value.amount}} {{$json.data.value.currency}}\n*Посилання:* https://prozorro.gov.ua/tender/{{$json.data.id}}",
         "additionalFields": {}
       },
-      "id": "64ee7bef-953b-46f1-bba5-87ba9f9c3564",
+      "id": "bf127051-f58c-4a7e-aea5-ffd6ea45f629",
       "name": "Send a text message",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [304, 0],
+      "position": [608, 32],
       "webhookId": "d0bd22d6-4bc8-4f6f-9c13-b9a58741468b",
       "credentials": {
         "telegramApi": {
@@ -111,6 +117,17 @@
           "name": "Telegram account"
         }
       }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [-320, 80],
+      "id": "73aa58df-b618-41b5-873e-a40ee64ce21e",
+      "name": "Split Out"
     }
   ],
   "connections": {
@@ -129,7 +146,7 @@
       "main": [
         [
           {
-            "node": "HTTP Request: Get Tender Details",
+            "node": "Split Out",
             "type": "main",
             "index": 0
           }
@@ -173,11 +190,21 @@
           }
         ]
       ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request: Get Tender Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "pinData": {},
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "b5da3b60b2aef7f21cd63bb95b2dbf30be48f0e39c2c264cd2d36f457483d3a4"
   }
 }
