@@ -6,10 +6,7 @@
       "name": "Start",
       "type": "n8n-nodes-base.start",
       "typeVersion": 1,
-      "position": [
-        -1040,
-        48
-      ]
+      "position": [-1040, 48]
     },
     {
       "parameters": {
@@ -25,10 +22,7 @@
       "name": "Run every hour",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [
-        -848,
-        48
-      ]
+      "position": [-848, 48]
     },
     {
       "parameters": {
@@ -41,10 +35,7 @@
       "name": "HTTP Request: Get Tender List",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -448,
-        48
-      ]
+      "position": [-448, 48]
     },
     {
       "parameters": {
@@ -55,10 +46,7 @@
       "name": "HTTP Request: Get Tender Details",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -240,
-        48
-      ]
+      "position": [-240, 48]
     },
     {
       "parameters": {
@@ -83,10 +71,7 @@
       "name": "Filter by Region & Value",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        -48,
-        48
-      ]
+      "position": [-48, 48]
     },
     {
       "parameters": {
@@ -96,10 +81,7 @@
       "name": "Save Last Sync Date",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -48,
-        240
-      ]
+      "position": [304, -128]
     },
     {
       "parameters": {
@@ -109,10 +91,7 @@
       "name": "Get Last Sync Date",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -640,
-        48
-      ]
+      "position": [-640, 48]
     },
     {
       "parameters": {
@@ -124,10 +103,7 @@
       "name": "Send a text message",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [
-        160,
-        -64
-      ],
+      "position": [304, 0],
       "webhookId": "d0bd22d6-4bc8-4f6f-9c13-b9a58741468b",
       "credentials": {
         "telegramApi": {
@@ -137,7 +113,68 @@
       }
     }
   ],
-  "connections": {},
+  "connections": {
+    "Run every hour": {
+      "main": [
+        [
+          {
+            "node": "Get Last Sync Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request: Get Tender List": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request: Get Tender Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request: Get Tender Details": {
+      "main": [
+        [
+          {
+            "node": "Filter by Region & Value",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter by Region & Value": {
+      "main": [
+        [
+          {
+            "node": "Save Last Sync Date",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Last Sync Date": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request: Get Tender List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
   "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
