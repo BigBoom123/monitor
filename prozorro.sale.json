@@ -1,0 +1,195 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 1
+            }
+          ]
+        }
+      },
+      "id": "94a90cdb-fc9e-4144-98a9-f18493a10ff2",
+      "name": "Run every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [-1728, 176]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst lastSyncDate = staticData.lastSaleSyncDate || '2020-01-01T00:00:00.000Z';\n\n// API требует особого формата даты, преобразуем её\n// Убираем миллисекунды и 'Z' для основного запроса\nconst formattedDate = lastSyncDate.split('.')[0];\n\nreturn { lastSyncDate: formattedDate };"
+      },
+      "id": "a02c1fb4-2970-4c66-ad54-731ab2d90357",
+      "name": "Get Last Sync Date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1520, 176]
+    },
+    {
+      "parameters": {
+        "url": "=https://procedure.prozorro.sale/api/search/byDateModified/{{ $('Get Last Sync Date').item.json.lastSyncDate }}?limit=100",
+        "options": {}
+      },
+      "id": "d3351af4-401c-4f20-bcc8-fcebdd3323e3",
+      "name": "HTTP Request: Get Auction List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-1328, 176]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "8bef7fa9-361e-493f-847c-a54437eff730",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [-1088, 176]
+    },
+    {
+      "parameters": {
+        "url": "=https://procedure.prozorro.sale/api/procedures/{{ $json._id }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "87fc53bf-f95d-437f-a402-34b8bd083450",
+      "name": "HTTP Request: Get Auction Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-848, 176]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "dateTime": [
+            {
+              "value1": "={{ $json.tenderPeriod.startDate }}",
+              "value2": "={{ $now }}"
+            }
+          ],
+          "number": [
+            {
+              "value1": "={{ $json.value.amount }}",
+              "operation": "smallerEqual",
+              "value2": 6000000
+            }
+          ]
+        }
+      },
+      "id": "86afc772-be9b-4fce-b330-329a71961b33",
+      "name": "Filter Auctions",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-608, 176]
+    },
+    {
+      "parameters": {
+        "chatId": "-1002767927753",
+        "text": "🔥 *Новий аукціон Prozorro.Sale!*\n\n*Назва:* {{$json.data.title}}\n\n*Стартова ціна:* {{$json.data.value.amount}} {{$json.data.value.currency}}\n*Посилання:* https://prozorro.sale/auction/{{$json.data.auctionID}}",
+        "additionalFields": {}
+      },
+      "id": "300b30f6-e52d-4207-b458-f9e4b04bf181",
+      "name": "Send Telegram Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [-368, 32],
+      "webhookId": "784ccc25-0949-48c4-9ab1-e57aeda22bd3",
+      "credentials": {
+        "telegramApi": {
+          "id": "LuJyyclSEglS2sAm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const lastItem = $items.at(-1);\nif (lastItem) {\n  const newSyncDate = lastItem.json.data?.dateModified;\n  if (newSyncDate) {\n    const staticData = $getWorkflowStaticData('global');\n\n    // Добавляем 1 миллисекунду, как сказано в документации\n    let date = new Date(newSyncDate);\n    date.setMilliseconds(date.getMilliseconds() + 1);\n    \n    staticData.lastSaleSyncDate = date.toISOString();\n  }\n}\nreturn [];"
+      },
+      "id": "df3dc541-9e3a-46a7-8b09-de31bd647e73",
+      "name": "Save Last Sync Date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-368, 320]
+    }
+  ],
+  "connections": {
+    "Run every hour": {
+      "main": [
+        [
+          {
+            "node": "Get Last Sync Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Last Sync Date": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request: Get Auction List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request: Get Auction List": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request: Get Auction Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request: Get Auction Details": {
+      "main": [
+        [
+          {
+            "node": "Filter Auctions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Auctions": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save Last Sync Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b5da3b60b2aef7f21cd63bb95b2dbf30be48f0e39c2c264cd2d36f457483d3a4"
+  }
+}
