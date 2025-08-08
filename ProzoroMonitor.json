@@ -1,0 +1,146 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "9f3f3620-6cd9-4bb0-9114-f12bd10efa97",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 1
+            }
+          ]
+        }
+      },
+      "id": "4412310b-c2fc-4b54-8fdf-11aafbbc92f7",
+      "name": "Run every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -848,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://public-api-sandbox.prozorro.gov.ua/api/2.5/tenders?offset={{ $('Get Last Sync Date').item.json.lastSyncDate }}",
+        "options": {
+          "pagination": {}
+        }
+      },
+      "id": "c42bb73c-763f-4691-89b2-841386430ca4",
+      "name": "HTTP Request: Get Tender List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -448,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://public-api-sandbox.prozorro.gov.ua/api/2.5/tenders/{{ $json.id }}",
+        "options": {}
+      },
+      "id": "383ac078-7dfd-4f8a-899e-56d7f60b9fd3",
+      "name": "HTTP Request: Get Tender Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -240,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.data.procuringEntity.address.region }}",
+              "operation": "contains",
+              "value2": "Київ"
+            }
+          ],
+          "number": [
+            {
+              "value1": "={{ $json.data.value.amount }}",
+              "operation": "larger",
+              "value2": 50000
+            }
+          ]
+        }
+      },
+      "id": "84ce1169-81d6-4c79-8a65-2fc7df37190a",
+      "name": "Filter by Region & Value",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const lastItem = $items.at(-1);\n$workflow.store.set('lastSyncDate', lastItem.json.data.dateModified);"
+      },
+      "id": "eb0b63f2-e8c0-46f3-a428-89174471d99a",
+      "name": "Save Last Sync Date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Получаем сохраненную дату или используем дату по умолчанию\nconst lastSyncDate = $workflow.store.get('lastSyncDate') || '2000-01-01T00:00:00';\n\n// Возвращаем ее для следующего узла\nreturn { lastSyncDate };"
+      },
+      "id": "5ca581fa-0dd7-4fea-95b2-4bebddc6f839",
+      "name": "Get Last Sync Date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "-1002767927753",
+        "text": "=*Новий тендер!*\n\n*Назва:* {{$json.data.title}}\n\n*Бюджет:* {{$json.data.value.amount}} {{$json.data.value.currency}}\n*Посилання:* https://prozorro.gov.ua/tender/{{$json.data.id}}",
+        "additionalFields": {}
+      },
+      "id": "64ee7bef-953b-46f1-bba5-87ba9f9c3564",
+      "name": "Send a text message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -64
+      ],
+      "webhookId": "d0bd22d6-4bc8-4f6f-9c13-b9a58741468b",
+      "credentials": {
+        "telegramApi": {
+          "id": "LuJyyclSEglS2sAm",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "connections": {},
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b5da3b60b2aef7f21cd63bb95b2dbf30be48f0e39c2c264cd2d36f457483d3a4"
+  }
+}
