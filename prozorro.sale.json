@@ -1,101 +1,101 @@
 {
   "nodes": [
     {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "triggerAtHour": 1
-            }
-          ]
-        }
-      },
-      "id": "94a90cdb-fc9e-4144-98a9-f18493a10ff2",
-      "name": "Run every hour",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.1,
-      "position": [-1728, 176]
+      "parameters": {},
+      "id": "6c93c4b7-cf85-45fa-9f3d-96d7078813f4",
+      "name": "Start Manually",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-1776, -176]
     },
     {
       "parameters": {
-        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst lastSyncDate = staticData.lastSaleSyncDate || '2020-01-01T00:00:00.000Z';\n\n// API требует особого формата даты, преобразуем её\n// Убираем миллисекунды и 'Z' для основного запроса\nconst formattedDate = lastSyncDate.split('.')[0];\n\nreturn { lastSyncDate: formattedDate };"
+        "jsCode": "return [{ json: { date: '2025-01-01T00:00:00.000Z' } }];"
       },
-      "id": "a02c1fb4-2970-4c66-ad54-731ab2d90357",
-      "name": "Get Last Sync Date",
+      "id": "046c6b1e-9049-4ff1-9e71-83e8fd8d6fa6",
+      "name": "Set Start Date",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-1520, 176]
+      "position": [-1504, -176]
     },
     {
       "parameters": {
-        "url": "=https://procedure.prozorro.sale/api/search/byDateModified/{{ $('Get Last Sync Date').item.json.lastSyncDate }}?limit=100",
+        "url": "=https://procedure.prozorro.sale/api/search/byDateModified/{{ $json.date }}?limit=100",
         "options": {}
       },
-      "id": "d3351af4-401c-4f20-bcc8-fcebdd3323e3",
+      "id": "4f1f11e1-3012-4379-aefe-55f7f4a57697",
       "name": "HTTP Request: Get Auction List",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [-1328, 176]
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "id": "8bef7fa9-361e-493f-847c-a54437eff730",
-      "name": "Split In Batches",
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 2,
-      "position": [-1088, 176]
+      "position": [-784, -176]
     },
     {
       "parameters": {
         "url": "=https://procedure.prozorro.sale/api/procedures/{{ $json._id }}",
         "options": {
-          "timeout": 10000
+          "timeout": 60000
         }
       },
-      "id": "87fc53bf-f95d-437f-a402-34b8bd083450",
+      "id": "1d9d3ddb-5617-4400-9d41-7b05b018b7d4",
       "name": "HTTP Request: Get Auction Details",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [-848, 176]
+      "position": [-336, -176]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\nconst locality = (data.sellingEntity?.address?.locality?.uk_UA || '').toLowerCase();\nconst targetLocalities = ['київ', 'вишгород', 'ірпінь'];\nconst isMatch = targetLocalities.includes(locality);\ndata.isRegionMatch = isMatch;\nreturn { json: data };"
+      },
+      "id": "485dfa0e-8dbb-46fc-a5aa-235fde7d00e3",
+      "name": "Проверка Региона",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-96, -176],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
         "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.isRegionMatch}}",
+              "value2": true
+            }
+          ],
           "dateTime": [
             {
-              "value1": "={{ $json.tenderPeriod.startDate }}",
-              "value2": "={{ $now }}"
+              "value1": "={{$json.tenderPeriod.startDate}}",
+              "value2": "={{$now}}"
             }
           ],
           "number": [
             {
-              "value1": "={{ $json.value.amount }}",
+              "value1": "={{$json.value.amount}}",
               "operation": "smallerEqual",
-              "value2": 6000000
+              "value2": 4000000
             }
           ]
         }
       },
-      "id": "86afc772-be9b-4fce-b330-329a71961b33",
+      "id": "c7eac8be-e167-4716-ae7c-ee2f9e2a69fc",
       "name": "Filter Auctions",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [-608, 176]
+      "position": [144, -176]
     },
     {
       "parameters": {
         "chatId": "-1002767927753",
-        "text": "🔥 *Новий аукціон Prozorro.Sale!*\n\n*Назва:* {{$json.data.title}}\n\n*Стартова ціна:* {{$json.data.value.amount}} {{$json.data.value.currency}}\n*Посилання:* https://prozorro.sale/auction/{{$json.data.auctionID}}",
+        "text": "🔥 *Новий аукціон Prozorro.Sale!*\n\n*Назва:* {{$json.title.uk_UA}}\n\n*Стартова ціна:* {{$json.value.amount}} {{$json.value.currency}}\n*Посилання:* https://prozorro.sale/auction/{{$json.auctionId}}",
         "additionalFields": {}
       },
-      "id": "300b30f6-e52d-4207-b458-f9e4b04bf181",
+      "id": "0c165835-82aa-4bd9-bef5-7ee6999d8944",
       "name": "Send Telegram Message",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [-368, 32],
-      "webhookId": "784ccc25-0949-48c4-9ab1-e57aeda22bd3",
+      "position": [384, -272],
+      "webhookId": "6b1d2d97-ca69-40c5-814b-f765a266c25b",
       "credentials": {
         "telegramApi": {
           "id": "LuJyyclSEglS2sAm",
@@ -105,32 +105,65 @@
     },
     {
       "parameters": {
-        "jsCode": "const lastItem = $items.at(-1);\nif (lastItem) {\n  const newSyncDate = lastItem.json.data?.dateModified;\n  if (newSyncDate) {\n    const staticData = $getWorkflowStaticData('global');\n\n    // Добавляем 1 миллисекунду, как сказано в документации\n    let date = new Date(newSyncDate);\n    date.setMilliseconds(date.getMilliseconds() + 1);\n    \n    staticData.lastSaleSyncDate = date.toISOString();\n  }\n}\nreturn [];"
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $items.length === 100 }}",
+              "value2": true
+            }
+          ]
+        }
       },
-      "id": "df3dc541-9e3a-46a7-8b09-de31bd647e73",
-      "name": "Save Last Sync Date",
+      "id": "1521293f-4f32-46e9-83bb-112d640137d5",
+      "name": "Were there 100 results?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-784, 32]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Берём все 100 элементов, которые пришли из HTTP Request\nconst items = $items;\n\n// Находим последний элемент в массиве\nconst lastItem = items.at(-1).json;\n\n// Получаем его дату модификации\nconst newSyncDate = lastItem.dateModified;\n\n// Добавляем одну миллисекунду, как сказано в документации\nlet date = new Date(newSyncDate);\ndate.setMilliseconds(date.getMilliseconds() + 1);\n\n// Возвращаем новую дату для следующего цикла\nreturn [{ json: { date: date.toISOString() } }];"
+      },
+      "id": "f4c75ab1-80cc-42b5-b55f-d047cd6ee0e8",
+      "name": "Update Next Date",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-368, 320]
+      "position": [-1184, 16]
+    },
+    {
+      "parameters": {},
+      "id": "7d33ad67-1b38-42a8-b4e9-cf5717d200f3",
+      "name": "End of Loop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [-544, 160]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [-1008, -176],
+      "id": "fb1fb72b-9e1d-4712-8691-1a1566851eff",
+      "name": "loop entry"
     }
   ],
   "connections": {
-    "Run every hour": {
+    "Start Manually": {
       "main": [
         [
           {
-            "node": "Get Last Sync Date",
+            "node": "Set Start Date",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get Last Sync Date": {
+    "Set Start Date": {
       "main": [
         [
           {
-            "node": "HTTP Request: Get Auction List",
+            "node": "loop entry",
             "type": "main",
             "index": 0
           }
@@ -141,18 +174,12 @@
       "main": [
         [
           {
-            "node": "Split In Batches",
+            "node": "HTTP Request: Get Auction Details",
             "type": "main",
             "index": 0
-          }
-        ]
-      ]
-    },
-    "Split In Batches": {
-      "main": [
-        [
+          },
           {
-            "node": "HTTP Request: Get Auction Details",
+            "node": "Were there 100 results?",
             "type": "main",
             "index": 0
           }
@@ -160,6 +187,17 @@
       ]
     },
     "HTTP Request: Get Auction Details": {
+      "main": [
+        [
+          {
+            "node": "Проверка Региона",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проверка Региона": {
       "main": [
         [
           {
@@ -177,9 +215,44 @@
             "node": "Send Telegram Message",
             "type": "main",
             "index": 0
-          },
+          }
+        ]
+      ]
+    },
+    "Were there 100 results?": {
+      "main": [
+        [
           {
-            "node": "Save Last Sync Date",
+            "node": "Update Next Date",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "End of Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Next Date": {
+      "main": [
+        [
+          {
+            "node": "loop entry",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "loop entry": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request: Get Auction List",
             "type": "main",
             "index": 0
           }
@@ -189,7 +262,6 @@
   },
   "pinData": {},
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "b5da3b60b2aef7f21cd63bb95b2dbf30be48f0e39c2c264cd2d36f457483d3a4"
   }
 }
