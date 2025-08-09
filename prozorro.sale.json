@@ -2,56 +2,122 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "6c93c4b7-cf85-45fa-9f3d-96d7078813f4",
+      "id": "9078e4c5-2f4b-41a8-bc55-fef96020389d",
       "name": "Start Manually",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [-1776, -176]
+      "position": [-1856, 272]
     },
     {
       "parameters": {
-        "jsCode": "return [{ json: { date: '2025-01-01T00:00:00.000Z' } }];"
-      },
-      "id": "046c6b1e-9049-4ff1-9e71-83e8fd8d6fa6",
-      "name": "Set Start Date",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-1504, -176]
-    },
-    {
-      "parameters": {
-        "url": "=https://procedure.prozorro.sale/api/search/byDateModified/{{ $json.date }}?limit=100",
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS sync_state (\n  key   TEXT PRIMARY KEY,\n  value TIMESTAMPTZ\n);\n\nCREATE TABLE IF NOT EXISTS procedures (\n  _id TEXT PRIMARY KEY,\n  auction_id TEXT,\n  date_modified TIMESTAMPTZ,\n  title JSONB,\n  value_amount NUMERIC,\n  value_currency TEXT,\n  tender_period JSONB,\n  selling_entity JSONB,\n  raw JSONB\n);",
         "options": {}
       },
-      "id": "4f1f11e1-3012-4379-aefe-55f7f4a57697",
-      "name": "HTTP Request: Get Auction List",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.1,
-      "position": [-784, -176]
+      "id": "461313da-ec96-407b-8b4b-2a5d4a50e4be",
+      "name": "Postgres: Migrate",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [-1616, 272],
+      "credentials": {
+        "postgres": {
+          "id": "pZUsVvYuYQh5b91f",
+          "name": "Postgres account"
+        }
+      }
     },
     {
       "parameters": {
-        "url": "=https://procedure.prozorro.sale/api/procedures/{{ $json._id }}",
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(\n  (SELECT value FROM sync_state WHERE key='prozorro_last_sync'),\n  '2025-01-01T00:00:00.000Z'::timestamptz\n) AS sync_date;",
+        "options": {}
+      },
+      "id": "4a988ec3-f821-475b-a7c0-2c8ddf211ef1",
+      "name": "Postgres: Get Sync Date",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [-1376, 272],
+      "credentials": {
+        "postgres": {
+          "id": "pZUsVvYuYQh5b91f",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "syncDate",
+              "value": "={{$json.sync_date}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "84709019-675c-4f4f-b5ad-fdf6fec92829",
+      "name": "Set: Prepare Sync Date",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [-1184, 272]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [-976, 272],
+      "id": "6ef2c434-53be-42a7-843a-ef36a8e7011e",
+      "name": "Loop Entry (Pass Through)"
+    },
+    {
+      "parameters": {
+        "url": "=https://procedure.prozorro.sale/api/search/byDateModified/{{$json.formattedSyncDate}}?limit=100\n",
         "options": {
           "timeout": 60000
         }
       },
-      "id": "1d9d3ddb-5617-4400-9d41-7b05b018b7d4",
-      "name": "HTTP Request: Get Auction Details",
+      "id": "7ae09d66-3aea-49a0-a220-b91309a7d9c5",
+      "name": "HTTP: Get Auction List",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [-336, -176]
+      "position": [-592, 160]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "9b8f12f5-6852-4ce5-bcd2-31c050c9786c",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [80, 432]
+    },
+    {
+      "parameters": {
+        "url": "=https://procedure.prozorro.sale/api/procedures/{{$json._id}}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "55426ef4-d315-4234-ae72-3f7da2bcdba5",
+      "name": "HTTP: Get Auction Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [240, 432]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "const data = $json;\nconst locality = (data.sellingEntity?.address?.locality?.uk_UA || '').toLowerCase();\nconst targetLocalities = ['київ', 'вишгород', 'ірпінь'];\nconst isMatch = targetLocalities.includes(locality);\ndata.isRegionMatch = isMatch;\nreturn { json: data };"
       },
-      "id": "485dfa0e-8dbb-46fc-a5aa-235fde7d00e3",
+      "id": "e727ef73-87a8-474f-9d3f-76e698b4f49b",
       "name": "Проверка Региона",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-96, -176],
+      "position": [512, 432],
       "alwaysOutputData": true
     },
     {
@@ -78,24 +144,51 @@
           ]
         }
       },
-      "id": "c7eac8be-e167-4716-ae7c-ee2f9e2a69fc",
+      "id": "638cac55-67af-448a-aa81-b1f4df6edcde",
       "name": "Filter Auctions",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [144, -176]
+      "position": [704, 432]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "titleText",
+              "value": "={{$json.title.uk_UA}}"
+            },
+            {
+              "name": "priceText",
+              "value": "={{$json.value.amount}} {{$json.value.currency}}"
+            },
+            {
+              "name": "auctionUrl",
+              "value": "=https://prozorro.sale/auction/{{$json.auctionId}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "545db368-3a2d-4cf0-bb1a-509d51a54cfd",
+      "name": "Set: Telegram Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [864, 160]
     },
     {
       "parameters": {
         "chatId": "-1002767927753",
-        "text": "🔥 *Новий аукціон Prozorro.Sale!*\n\n*Назва:* {{$json.title.uk_UA}}\n\n*Стартова ціна:* {{$json.value.amount}} {{$json.value.currency}}\n*Посилання:* https://prozorro.sale/auction/{{$json.auctionId}}",
+        "text": "🔥 *Новий аукціон Prozorro.Sale!*\n\n*Назва:* {{$json.titleText}}\n*Стартова ціна:* {{$json.priceText}}\n*Посилання:* {{$json.auctionUrl}}",
         "additionalFields": {}
       },
-      "id": "0c165835-82aa-4bd9-bef5-7ee6999d8944",
+      "id": "8fb3e576-345c-4f88-b671-1fe14d6e3bf8",
       "name": "Send Telegram Message",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [384, -272],
-      "webhookId": "6b1d2d97-ca69-40c5-814b-f765a266c25b",
+      "position": [1056, 160],
+      "webhookId": "5b27f88b-6c25-483d-847a-c2d4ac94b8d8",
       "credentials": {
         "telegramApi": {
           "id": "LuJyyclSEglS2sAm",
@@ -105,46 +198,128 @@
     },
     {
       "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO procedures (\n  _id, auction_id, date_modified, title, value_amount, value_currency, tender_period, selling_entity, raw\n) VALUES (\n  $1, $2, $3::timestamptz, $4::jsonb, $5::numeric, $6::text, $7::jsonb, $8::jsonb, $9::jsonb\n)\nON CONFLICT (_id) DO UPDATE SET\n  auction_id = EXCLUDED.auction_id,\n  date_modified = EXCLUDED.date_modified,\n  title = EXCLUDED.title,\n  value_amount = EXCLUDED.value_amount,\n  value_currency = EXCLUDED.value_currency,\n  tender_period = EXCLUDED.tender_period,\n  selling_entity = EXCLUDED.selling_entity,\n  raw = EXCLUDED.raw;",
+        "options": {
+          "queryReplacement": "={{$json[\"_id\"]}}, {{$json[\"auctionId\"]}}, {{$json[\"dateModified\"] || $json[\"date_modified\"]}}, {{JSON.stringify($json[\"title\"])}}, {{$json[\"value\"]?.[\"amount\"]}}, {{$json[\"value\"]?.[\"currency\"]}}, {{JSON.stringify($json[\"tenderPeriod\"] || $json[\"tender_period\"])}}, {{JSON.stringify($json[\"sellingEntity\"] || $json[\"selling_entity\"])}}, {{JSON.stringify($json)}}"
+        }
+      },
+      "id": "d043ff55-08a7-4bad-83f2-8f35d00a5d13",
+      "name": "Postgres: Upsert Procedure",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1056, 368],
+      "credentials": {
+        "postgres": {
+          "id": "pZUsVvYuYQh5b91f",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "17434b8b-38f9-42fb-b1eb-cde481f976f9",
+      "name": "Next Batch",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [1264, 272]
+    },
+    {
+      "parameters": {
         "conditions": {
-          "boolean": [
+          "number": [
             {
-              "value1": "={{ $items.length === 100 }}",
-              "value2": true
+              "value1": "={{$input.all().length}}",
+              "operation": "equal",
+              "value2": 100
             }
           ]
         }
       },
-      "id": "1521293f-4f32-46e9-83bb-112d640137d5",
+      "id": "256538da-fa5f-42b0-81a4-269d198c9b69",
       "name": "Were there 100 results?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [-784, 32]
+      "position": [-224, -48]
     },
     {
       "parameters": {
-        "jsCode": "// Берём все 100 элементов, которые пришли из HTTP Request\nconst items = $items;\n\n// Находим последний элемент в массиве\nconst lastItem = items.at(-1).json;\n\n// Получаем его дату модификации\nconst newSyncDate = lastItem.dateModified;\n\n// Добавляем одну миллисекунду, как сказано в документации\nlet date = new Date(newSyncDate);\ndate.setMilliseconds(date.getMilliseconds() + 1);\n\n// Возвращаем новую дату для следующего цикла\nreturn [{ json: { date: date.toISOString() } }];"
+        "jsCode": "// Беремо увесь масив елементів від HTTP: Get Auction List\nconst list = items;\n\n// Якщо масив порожній — тримаємо поточний момент (щоб не зациклитись)\nif (!Array.isArray(list) || list.length === 0) {\n  const nowIso = new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n  return [{ json: { syncDate: nowIso } }];\n}\n\n// Останній елемент без використання .at()\nconst last = list[list.length - 1].json;\n\n// Дістаємо дату зміни (перевіряємо можливі назви)\nconst dm = last.dateModified ?? last.date_modified;\nconst d = new Date(dm);\n\n// Якщо дата некоректна — підстрахуємось поточним часом\nif (isNaN(d.getTime())) {\n  const nowIso = new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n  return [{ json: { syncDate: nowIso } }];\n}\n\n// Зсуваємо на +1 мс і приводимо до формату з 6 цифрами до 'Z'\nd.setMilliseconds(d.getMilliseconds() + 1);\nconst iso = d.toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n\nreturn [{ json: { syncDate: iso } }];\n"
       },
-      "id": "f4c75ab1-80cc-42b5-b55f-d047cd6ee0e8",
-      "name": "Update Next Date",
+      "id": "cfca2f3e-d57a-4743-85d6-0b3a9f0048a4",
+      "name": "Compute Next Sync Date",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-1184, 16]
+      "position": [-16, 160]
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [288, -80],
+      "id": "ef812e0c-53dd-42bb-988a-15b9d3dc00ca",
+      "name": "Gate → Loop (if 100)"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [256, 128],
+      "id": "d40e483e-ab35-4e46-b4fb-27664334fa2a",
+      "name": "Gate → Save (if <100)"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO sync_state (key, value)\nVALUES ('prozorro_last_sync', $1::timestamptz)\nON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;",
+        "options": {}
+      },
+      "id": "f24c0e51-002b-4e7b-908f-7d262bc75628",
+      "name": "Postgres: Save Last Date",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [464, 128],
+      "credentials": {
+        "postgres": {
+          "id": "pZUsVvYuYQh5b91f",
+          "name": "Postgres account"
+        }
+      }
     },
     {
       "parameters": {},
-      "id": "7d33ad67-1b38-42a8-b4e9-cf5717d200f3",
+      "id": "08ec8ae7-9603-489d-aefa-19631fb91b1a",
       "name": "End of Loop",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [-544, 160]
+      "position": [656, 128]
     },
     {
-      "parameters": {},
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [-1008, -176],
-      "id": "fb1fb72b-9e1d-4712-8691-1a1566851eff",
-      "name": "loop entry"
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Беремо syncDate або стартову дату\nlet v = ($json.syncDate ?? '2025-01-01').toString().trim();\n\n// Якщо ISO має 3 знаки мс (.SSSZ) — дописуємо ще 000 → .SSSSSSZ\nif (/\\.\\d{3}Z$/.test(v)) v = v.replace('Z', '000Z');\n\n// Прибираємо пробіли/переноси (на всяк випадок)\nv = v.replace(/\\s+/g, '');\n\n// ПОВЕРТАЄМО ОДИН ОБ’ЄКТ, а не масив, і не втрачаємо попередні поля\nreturn { json: { ...$json, formattedSyncDate: v } };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-752, 192],
+      "id": "0873fda7-5ccf-45c8-95af-c316eca04db8",
+      "name": "Normalize syncDate"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Увесь список з поточного входу (HTTP)\nconst list = $input.all();              // масив елементів формату { json: {...} }\n\n// Перший (і єдиний) елемент з вузла \"Normalize syncDate\"\nconst dateItem = $('Normalize syncDate').first();   // { json: {...} } або undefined\n\n// Формуємо гарантоване значення дати\nconst formatted =\n  dateItem?.json?.formattedSyncDate ??\n  dateItem?.json?.syncDate ??\n  '2025-01-01T00:00:00.000000Z';\n\n// Додаємо formattedSyncDate до кожного елемента\nreturn list.map(i => ({\n  json: { ...i.json, formattedSyncDate: formatted },\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-288, 416],
+      "id": "e91212d1-4875-428b-b367-8bc12cd7bde1",
+      "name": "Code1"
     }
   ],
   "connections": {
@@ -152,41 +327,90 @@
       "main": [
         [
           {
-            "node": "Set Start Date",
+            "node": "Postgres: Migrate",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Set Start Date": {
+    "Postgres: Migrate": {
       "main": [
         [
           {
-            "node": "loop entry",
+            "node": "Postgres: Get Sync Date",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP Request: Get Auction List": {
+    "Postgres: Get Sync Date": {
       "main": [
         [
           {
-            "node": "HTTP Request: Get Auction Details",
+            "node": "Set: Prepare Sync Date",
             "type": "main",
             "index": 0
-          },
+          }
+        ]
+      ]
+    },
+    "Set: Prepare Sync Date": {
+      "main": [
+        [
+          {
+            "node": "Loop Entry (Pass Through)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Entry (Pass Through)": {
+      "main": [
+        [
+          {
+            "node": "Normalize syncDate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Get Auction List": {
+      "main": [
+        [
           {
             "node": "Were there 100 results?",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Compute Next Sync Date",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
     },
-    "HTTP Request: Get Auction Details": {
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Get Auction Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Get Auction Details": {
       "main": [
         [
           {
@@ -212,7 +436,41 @@
       "main": [
         [
           {
+            "node": "Set: Telegram Payload",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Postgres: Upsert Procedure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Postgres: Upsert Procedure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Telegram Payload": {
+      "main": [
+        [
+          {
             "node": "Send Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres: Upsert Procedure": {
+      "main": [
+        [
+          {
+            "node": "Next Batch",
             "type": "main",
             "index": 0
           }
@@ -223,11 +481,60 @@
       "main": [
         [
           {
-            "node": "Update Next Date",
+            "node": "Gate → Loop (if 100)",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Gate → Save (if <100)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Compute Next Sync Date": {
+      "main": [
+        [
+          {
+            "node": "Gate → Save (if <100)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gate → Loop (if 100)",
             "type": "main",
             "index": 0
           }
-        ],
+        ]
+      ]
+    },
+    "Gate → Loop (if 100)": {
+      "main": [
+        [
+          {
+            "node": "Loop Entry (Pass Through)",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Gate → Save (if <100)": {
+      "main": [
+        [
+          {
+            "node": "Postgres: Save Last Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres: Save Last Date": {
+      "main": [
         [
           {
             "node": "End of Loop",
@@ -237,22 +544,22 @@
         ]
       ]
     },
-    "Update Next Date": {
+    "Normalize syncDate": {
       "main": [
         [
           {
-            "node": "loop entry",
+            "node": "HTTP: Get Auction List",
             "type": "main",
-            "index": 1
+            "index": 0
           }
         ]
       ]
     },
-    "loop entry": {
+    "Code1": {
       "main": [
         [
           {
-            "node": "HTTP Request: Get Auction List",
+            "node": "Split In Batches",
             "type": "main",
             "index": 0
           }
@@ -262,6 +569,7 @@
   },
   "pinData": {},
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "b5da3b60b2aef7f21cd63bb95b2dbf30be48f0e39c2c264cd2d36f457483d3a4"
   }
 }
