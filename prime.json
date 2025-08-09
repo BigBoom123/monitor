@@ -1,0 +1,375 @@
+{
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "336b06bb-0f0c-468e-b364-aec60510a6a4",
+      "name": "Start Manually",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2000,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE TABLE IF NOT EXISTS sync_state ( key TEXT PRIMARY KEY, value TIMESTAMPTZ );\nCREATE TABLE IF NOT EXISTS procedures (\n  _id TEXT PRIMARY KEY,\n  auction_id TEXT,\n  date_modified TIMESTAMPTZ,\n  title JSONB,\n  value_amount NUMERIC,\n  value_currency TEXT,\n  tender_period JSONB,\n  selling_entity JSONB,\n  raw JSONB\n);",
+        "options": {}
+      },
+      "id": "9507a737-d8a8-42a0-916f-e8ac397bc704",
+      "name": "Postgres: Migrate",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "pZUsVvYuYQh5b91f",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE((SELECT value FROM sync_state WHERE key='prozorro_last_sync'),'2025-01-01T00:00:00.000000Z'::timestamptz) AS sync_date;",
+        "options": {}
+      },
+      "id": "75b7e1e6-445f-4092-85e5-14200f9f4ccf",
+      "name": "Postgres: Get Sync Date",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -1536,
+        480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "pZUsVvYuYQh5b91f",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "syncDate",
+              "value": "={{$json.sync_date}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "861090f7-00f1-492a-ba24-98e17e18d06b",
+      "name": "Set: Prepare Sync Date",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let v = ($json.syncDate ?? '2025-01-01T00:00:00.000000Z').toString().trim();\nif (/\\.\\d{3}Z$/.test(v)) v = v.replace('Z','000Z');\nv = v.replace(/\\s+/g,'');\nreturn { json: { ...$json, formattedSyncDate: v } };"
+      },
+      "id": "41f17215-1479-4d2c-9801-d9c7c8d7e0ab",
+      "name": "Normalize syncDate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1136,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://procedure.prozorro.sale/api/search/byDateModified/{{$json.formattedSyncDate}}?limit=100",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "88636e4f-7c55-4431-85e6-e03246be5370",
+      "name": "HTTP: Get Auction List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -912,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const list = $items('HTTP: Get Auction List').map(i=>i.json);\nconst dateItem = $('Normalize syncDate').first();\nconst formatted = dateItem?.json?.formattedSyncDate ?? '2025-01-01T00:00:00.000000Z';\nreturn list.map(o=>({ json: { ...o, formattedSyncDate: formatted } }));"
+      },
+      "id": "ff4bab58-6598-493f-bada-29cf3df1b409",
+      "name": "Code: Add formattedSyncDate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "7bG3NSoITuCiSmu9",
+        "options": {}
+      },
+      "id": "496fd64c-6f9b-4200-aa60-9e951c88e594",
+      "name": "Execute Workflow: ProcessPage",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        480
+      ],
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const list = $items('HTTP: Get Auction List').map(i=>i.json);\nif (!list.length) {\n  const nowIso = new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n  return [{ json: { count: 0, nextSyncDate: nowIso } }];\n}\nconst last = list[list.length-1];\nconst dm = last.dateModified ?? last.date_modified;\nconst d = new Date(dm);\nif (isNaN(d.getTime())){\n  const nowIso = new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n  return [{ json: { count: list.length, nextSyncDate: nowIso } }];\n}\nd.setMilliseconds(d.getMilliseconds()+1);\nconst iso = d.toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\nreturn [{ json: { count: list.length, nextSyncDate: iso } }];"
+      },
+      "id": "08319b3a-440a-4feb-83e2-ab9f59406812",
+      "name": "Compute Next Sync Date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.count}}",
+              "operation": "equal",
+              "value2": 100
+            }
+          ]
+        }
+      },
+      "id": "abbbe2f1-47bc-48ec-97a7-31267d9d292a",
+      "name": "Were there 100 results?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        368,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "syncDate",
+              "value": "={{$json.nextSyncDate}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "228177f0-6217-4bbe-9ac3-deb411491ba0",
+      "name": "Set: New Sync Date",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO sync_state (key,value) VALUES ('prozorro_last_sync',$1::timestamptz)\nON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value;",
+        "options": {}
+      },
+      "id": "b6c4cc30-df85-447e-b1e8-ad0480022c6b",
+      "name": "Postgres: Save Last Date",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        592,
+        576
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "pZUsVvYuYQh5b91f",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "b278e0ae-f6dc-4318-bc7b-44a8aec7edf2",
+      "name": "End of Loop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        784,
+        576
+      ]
+    }
+  ],
+  "connections": {
+    "Start Manually": {
+      "main": [
+        [
+          {
+            "node": "Postgres: Migrate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres: Migrate": {
+      "main": [
+        [
+          {
+            "node": "Postgres: Get Sync Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres: Get Sync Date": {
+      "main": [
+        [
+          {
+            "node": "Set: Prepare Sync Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Prepare Sync Date": {
+      "main": [
+        [
+          {
+            "node": "Normalize syncDate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize syncDate": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Get Auction List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Get Auction List": {
+      "main": [
+        [
+          {
+            "node": "Code: Add formattedSyncDate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Add formattedSyncDate": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow: ProcessPage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow: ProcessPage": {
+      "main": [
+        [
+          {
+            "node": "Compute Next Sync Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Next Sync Date": {
+      "main": [
+        [
+          {
+            "node": "Were there 100 results?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Were there 100 results?": {
+      "main": [
+        [
+          {
+            "node": "Set: New Sync Date",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Postgres: Save Last Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: New Sync Date": {
+      "main": [
+        [
+          {
+            "node": "Normalize syncDate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres: Save Last Date": {
+      "main": [
+        [
+          {
+            "node": "End of Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "b5da3b60b2aef7f21cd63bb95b2dbf30be48f0e39c2c264cd2d36f457483d3a4"
+  }
+}

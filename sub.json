@@ -1,0 +1,305 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "id": "da7f52eb-027a-4d30-b499-0e8d6aa72495",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1056,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://procedure.prozorro.sale/api/procedures/' + encodeURIComponent(String($json._id ?? $json.auctionId ?? $json.id).trim()) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "82504fc0-2cfc-4605-8ff2-cb319510547b",
+      "name": "HTTP: Get Auction Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -832,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\nconst locality = (data.sellingEntity?.address?.locality?.uk_UA || '').toLowerCase();\nconst targetLocalities = ['київ','вишгород','ірпінь'];\nconst isMatch = targetLocalities.includes(locality);\nreturn { json: { ...data, isRegionMatch: isMatch } };"
+      },
+      "id": "7bbae538-f08f-4ad5-b4b0-d1016abdfb8d",
+      "name": "Проверка Региона",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.isRegionMatch}}",
+              "value2": true
+            }
+          ],
+          "dateTime": [
+            {
+              "value1": "={{$json.tenderPeriod.startDate}}",
+              "value2": "={{$now}}"
+            }
+          ],
+          "number": [
+            {
+              "value1": "={{$json.value.amount}}",
+              "operation": "smallerEqual",
+              "value2": 4000000
+            }
+          ]
+        }
+      },
+      "id": "98b5d4e6-23af-4a1e-ada0-6b84d349e9f7",
+      "name": "Filter Auctions",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "titleText",
+              "value": "={{$json.title.uk_UA}}"
+            },
+            {
+              "name": "priceText",
+              "value": "={{$json.value.amount}} {{$json.value.currency}}"
+            },
+            {
+              "name": "auctionUrl",
+              "value": "=https://prozorro.sale/auction/{{$json.auctionId}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8afb94e4-7d3f-4f7c-9530-b4ebcc696cf3",
+      "name": "Set: Telegram Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "-1002767927753",
+        "text": "🔥 *Новий аукціон Prozorro.Sale!*\n\n*Назва:* {{$json.titleText}}\n*Стартова ціна:* {{$json.priceText}}\n*Посилання:* {{$json.auctionUrl}}",
+        "additionalFields": {}
+      },
+      "id": "6d739d1d-65df-4f0a-a6ec-8d6a3a5f2c7c",
+      "name": "Send Telegram Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        -16
+      ],
+      "webhookId": "5dd5c2d7-1468-49e8-8c04-42803db6b9d2",
+      "credentials": {
+        "telegramApi": {
+          "id": "LuJyyclSEglS2sAm",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO procedures (_id, auction_id, date_modified, title, value_amount, value_currency, tender_period, selling_entity, raw)\nVALUES ($1, $2, $3::timestamptz, $4::jsonb, $5::numeric, $6::text, $7::jsonb, $8::jsonb, $9::jsonb)\nON CONFLICT (_id) DO UPDATE SET auction_id=EXCLUDED.auction_id, date_modified=EXCLUDED.date_modified, title=EXCLUDED.title, value_amount=EXCLUDED.value_amount, value_currency=EXCLUDED.value_currency, tender_period=EXCLUDED.tender_period, selling_entity=EXCLUDED.selling_entity, raw=EXCLUDED.raw;",
+        "options": {
+          "queryReplacement": "={{$json[\"_id\"]}}, {{$json[\"auctionId\"]}}, {{$json[\"dateModified\"] || $json[\"date_modified\"]}}, {{JSON.stringify($json[\"title\"])}}, {{$json[\"value\"]?.[\"amount\"]}}, {{$json[\"value\"]?.[\"currency\"]}}, {{JSON.stringify($json[\"tenderPeriod\"] || $json[\"tender_period\"])}}, {{JSON.stringify($json[\"sellingEntity\"] || $json[\"selling_entity\"])}}, {{JSON.stringify($json)}}"
+        }
+      },
+      "id": "cd1bda73-01c3-45b5-8ac0-5d63e29d232d",
+      "name": "Postgres: Upsert Procedure",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        176
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "pZUsVvYuYQh5b91f",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "e5717acb-b72f-46a8-8d4d-61d1008f5a78",
+      "name": "Next Batch",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        176,
+        176
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "32cca52a-7f3f-4709-b8be-d90359944b58",
+      "name": "End",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -944,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1392,
+        80
+      ],
+      "id": "8931e2c9-0658-4c63-ba63-346f689cc3f3",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "connections": {
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "End",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP: Get Auction Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP: Get Auction Details": {
+      "main": [
+        [
+          {
+            "node": "Проверка Региона",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проверка Региона": {
+      "main": [
+        [
+          {
+            "node": "Filter Auctions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Auctions": {
+      "main": [
+        [
+          {
+            "node": "Set: Telegram Payload",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Postgres: Upsert Procedure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Postgres: Upsert Procedure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Telegram Payload": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres: Upsert Procedure": {
+      "main": [
+        [
+          {
+            "node": "Next Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Next Batch": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "b5da3b60b2aef7f21cd63bb95b2dbf30be48f0e39c2c264cd2d36f457483d3a4"
+  }
+}
