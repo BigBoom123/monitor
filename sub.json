@@ -6,14 +6,11 @@
           "reset": false
         }
       },
-      "id": "da7f52eb-027a-4d30-b499-0e8d6aa72495",
+      "id": "4696f8dd-74d8-4ff8-a1d7-d7c4336b2d0d",
       "name": "Loop Over Items",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [
-        -1056,
-        80
-      ]
+      "position": [-112, 208]
     },
     {
       "parameters": {
@@ -22,28 +19,22 @@
           "timeout": 60000
         }
       },
-      "id": "82504fc0-2cfc-4605-8ff2-cb319510547b",
+      "id": "57aa47be-c590-421e-9703-7d2567f3e219",
       "name": "HTTP: Get Auction Details",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -832,
-        80
-      ]
+      "position": [112, 208]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "const data = $json;\nconst locality = (data.sellingEntity?.address?.locality?.uk_UA || '').toLowerCase();\nconst targetLocalities = ['київ','вишгород','ірпінь'];\nconst isMatch = targetLocalities.includes(locality);\nreturn { json: { ...data, isRegionMatch: isMatch } };"
       },
-      "id": "7bbae538-f08f-4ad5-b4b0-d1016abdfb8d",
+      "id": "41e93dd8-5be8-4ace-a400-864524e48c3b",
       "name": "Проверка Региона",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -624,
-        80
-      ]
+      "position": [320, 208]
     },
     {
       "parameters": {
@@ -69,14 +60,11 @@
           ]
         }
       },
-      "id": "98b5d4e6-23af-4a1e-ada0-6b84d349e9f7",
+      "id": "62915872-07f0-44b3-8044-de83137a60c0",
       "name": "Filter Auctions",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        -432,
-        80
-      ]
+      "position": [512, 208]
     },
     {
       "parameters": {
@@ -99,14 +87,11 @@
         },
         "options": {}
       },
-      "id": "8afb94e4-7d3f-4f7c-9530-b4ebcc696cf3",
+      "id": "8a1a84d3-adb1-47c7-9898-716fee61a7aa",
       "name": "Set: Telegram Payload",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
-      "position": [
-        -224,
-        -16
-      ]
+      "position": [720, 112]
     },
     {
       "parameters": {
@@ -114,14 +99,11 @@
         "text": "🔥 *Новий аукціон Prozorro.Sale!*\n\n*Назва:* {{$json.titleText}}\n*Стартова ціна:* {{$json.priceText}}\n*Посилання:* {{$json.auctionUrl}}",
         "additionalFields": {}
       },
-      "id": "6d739d1d-65df-4f0a-a6ec-8d6a3a5f2c7c",
+      "id": "0f685752-af18-47a7-9c3d-5484d3a7478f",
       "name": "Send Telegram Message",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [
-        -32,
-        -16
-      ],
+      "position": [912, 112],
       "webhookId": "5dd5c2d7-1468-49e8-8c04-42803db6b9d2",
       "credentials": {
         "telegramApi": {
@@ -133,19 +115,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO procedures (_id, auction_id, date_modified, title, value_amount, value_currency, tender_period, selling_entity, registration_details, classification, qualification_period, status, registration_status, registration_id, registration_date, raw)\nVALUES ($1, $2, $3::timestamptz, $4::jsonb, $5::numeric, $6::text, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb, $12::text, $13::text, $14::text, $15::timestamptz, $16::jsonb)\nON CONFLICT (_id) DO UPDATE SET auction_id=EXCLUDED.auction_id, date_modified=EXCLUDED.date_modified, title=EXCLUDED.title, value_amount=EXCLUDED.value_amount, value_currency=EXCLUDED.value_currency, tender_period=EXCLUDED.tender_period, selling_entity=EXCLUDED.selling_entity, registration_details=EXCLUDED.registration_details, classification=EXCLUDED.classification, qualification_period=EXCLUDED.qualification_period, status=EXCLUDED.status, registration_status=EXCLUDED.registration_status, registration_id=EXCLUDED.registration_id, registration_date=EXCLUDED.registration_date, raw=EXCLUDED.raw;",
+        "query": "INSERT INTO salesfull_v1 (_id, auction_id, date_modified, title, value_amount, value_currency, tender_period, selling_entity, registration_details, classification, qualification_period, status, registration_status, registration_id, registration_date, raw)\nVALUES ($1, $2, $3::timestamptz, $4::jsonb, $5::numeric, $6::text, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb, $12::text, $13::text, $14::text, $15::timestamptz, $16::jsonb)\nON CONFLICT (_id) DO UPDATE SET auction_id=EXCLUDED.auction_id, date_modified=EXCLUDED.date_modified, title=EXCLUDED.title, value_amount=EXCLUDED.value_amount, value_currency=EXCLUDED.value_currency, tender_period=EXCLUDED.tender_period, selling_entity=EXCLUDED.selling_entity, registration_details=EXCLUDED.registration_details, classification=EXCLUDED.classification, qualification_period=EXCLUDED.qualification_period, status=EXCLUDED.status, registration_status=EXCLUDED.registration_status, registration_id=EXCLUDED.registration_id, registration_date=EXCLUDED.registration_date, raw=EXCLUDED.raw;",
         "options": {
-          "queryReplacement": "={{$json[\"_id\"]}}, {{$json[\"auctionId\"]}}, {{($json[\"dateModified\"] || $json[\"date_modified\"]) ? new Date($json[\"dateModified\"] || $json[\"date_modified\"]).toISOString() : null}}, {{JSON.stringify($json[\"title\"])}}, {{$json[\"value\"]?.[\"amount\"]}}, {{$json[\"value\"]?.[\"currency\"]}}, {{JSON.stringify($json[\"tenderPeriod\"] || $json[\"tender_period\"])}}, {{JSON.stringify($json[\"sellingEntity\"] || $json[\"selling_entity\"])}}, {{JSON.stringify($json[\"registrationDetails\"] || $json[\"registration_details\"])}}, {{JSON.stringify($json[\"classification\"])}}, {{JSON.stringify($json[\"qualificationPeriod\"] || $json[\"qualification_period\"])}}, {{$json[\"status\"]}}, {{$json[\"registrationStatus\"] || $json[\"registration_status\"]}}, {{$json[\"registrationId\"] || $json[\"registration_id\"]}}, {{($json[\"registrationDate\"] || $json[\"registration_date\"]) ? new Date($json[\"registrationDate\"] || $json[\"registration_date\"]).toISOString() : null}}, {{JSON.stringify($json)}}"
+          "queryReplacement": "={{ [\n  $('HTTP: Get Auction Details').item.json[\"_id\"] ?? $('HTTP: Get Auction Details').item.json[\"auctionId\"] ?? $('HTTP: Get Auction Details').item.json[\"id\"],\n  $('HTTP: Get Auction Details').item.json[\"auctionId\"] ?? $('HTTP: Get Auction Details').item.json[\"_id\"],\n  ( $('HTTP: Get Auction Details').item.json[\"dateModified\"] || $('HTTP: Get Auction Details').item.json[\"date_modified\"] ) ? new Date( $('HTTP: Get Auction Details').item.json[\"dateModified\"] || $('HTTP: Get Auction Details').item.json[\"date_modified\"] ).toISOString() : null,\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"title\"] ?? null ),\n  $('HTTP: Get Auction Details').item.json[\"value\"]?.[\"amount\"] ?? null,\n  $('HTTP: Get Auction Details').item.json[\"value\"]?.[\"currency\"] ?? null,\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"tenderPeriod\"] ?? $('HTTP: Get Auction Details').item.json[\"tender_period\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"sellingEntity\"] ?? $('HTTP: Get Auction Details').item.json[\"selling_entity\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"registrationDetails\"] ?? $('HTTP: Get Auction Details').item.json[\"registration_details\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"classification\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"qualificationPeriod\"] ?? $('HTTP: Get Auction Details').item.json[\"qualification_period\"] ?? null ),\n  $('HTTP: Get Auction Details').item.json[\"status\"] ?? null,\n  $('HTTP: Get Auction Details').item.json[\"registrationStatus\"] ?? $('HTTP: Get Auction Details').item.json[\"registration_status\"] ?? null,\n  $('HTTP: Get Auction Details').item.json[\"registrationId\"] ?? $('HTTP: Get Auction Details').item.json[\"registration_id\"] ?? null,\n  ( $('HTTP: Get Auction Details').item.json[\"registrationDate\"] || $('HTTP: Get Auction Details').item.json[\"registration_date\"] ) ? new Date( $('HTTP: Get Auction Details').item.json[\"registrationDate\"] || $('HTTP: Get Auction Details').item.json[\"registration_date\"] ).toISOString() : null,\n  JSON.stringify( $('HTTP: Get Auction Details').item.json )\n] }}"
         }
       },
-      "id": "cd1bda73-01c3-45b5-8ac0-5d63e29d232d",
+      "id": "85938c67-020a-43cd-8efe-6efc68b3f359",
       "name": "Postgres: Upsert Procedure",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [
-        -32,
-        176
-      ],
+      "position": [912, 304],
       "credentials": {
         "postgres": {
           "id": "pZUsVvYuYQh5b91f",
@@ -155,25 +134,19 @@
     },
     {
       "parameters": {},
-      "id": "e5717acb-b72f-46a8-8d4d-61d1008f5a78",
+      "id": "4baeffba-3686-4028-a34d-82a44d2f36f5",
       "name": "Next Batch",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [
-        176,
-        176
-      ]
+      "position": [1120, 304]
     },
     {
       "parameters": {},
-      "id": "32cca52a-7f3f-4709-b8be-d90359944b58",
+      "id": "3b3baaac-3466-4678-83b2-c56baa42fec7",
       "name": "End",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [
-        -944,
-        -128
-      ]
+      "position": [0, 0]
     },
     {
       "parameters": {
@@ -181,11 +154,8 @@
       },
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
-      "position": [
-        -1392,
-        80
-      ],
-      "id": "8931e2c9-0658-4c63-ba63-346f689cc3f3",
+      "position": [-448, 208],
+      "id": "f510353a-6ef5-463b-9ca4-04fa9a48ef35",
       "name": "When Executed by Another Workflow"
     }
   ],

@@ -2,29 +2,23 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "336b06bb-0f0c-468e-b364-aec60510a6a4",
+      "id": "07dcbbd4-07c2-4428-98f6-09310996d49d",
       "name": "Start Manually",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [
-        -2000,
-        480
-      ]
+      "position": [-2000, 576]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "CREATE TABLE IF NOT EXISTS sync_state ( key TEXT PRIMARY KEY, value TIMESTAMPTZ );\nCREATE TABLE IF NOT EXISTS procedures (\n  _id TEXT PRIMARY KEY,\n  auction_id TEXT,\n  date_modified TIMESTAMPTZ,\n  title JSONB,\n  value_amount NUMERIC,\n  value_currency TEXT,\n  tender_period JSONB,\n  selling_entity JSONB,\n  registration_details JSONB,\n  classification JSONB,\n  qualification_period JSONB,\n  status TEXT,\n  registration_status TEXT,\n  registration_id TEXT,\n  registration_date TIMESTAMPTZ,\n  raw JSONB\n);",
+        "query": "CREATE TABLE IF NOT EXISTS sync_state ( key TEXT PRIMARY KEY, value TIMESTAMPTZ );\nCREATE TABLE IF NOT EXISTS salesfull_v1 (\n  _id TEXT PRIMARY KEY,\n  auction_id TEXT,\n  date_modified TIMESTAMPTZ,\n  title JSONB,\n  value_amount NUMERIC,\n  value_currency TEXT,\n  tender_period JSONB,\n  selling_entity JSONB,\n  registration_details JSONB,\n  classification JSONB,\n  qualification_period JSONB,\n  status TEXT,\n  registration_status TEXT,\n  registration_id TEXT,\n  registration_date TIMESTAMPTZ,\n  raw JSONB\n);",
         "options": {}
       },
-      "id": "9507a737-d8a8-42a0-916f-e8ac397bc704",
+      "id": "e5e60e4f-2045-471f-845f-be77a516e509",
       "name": "Postgres: Migrate",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [
-        -1760,
-        480
-      ],
+      "position": [-1760, 576],
       "credentials": {
         "postgres": {
           "id": "pZUsVvYuYQh5b91f",
@@ -38,14 +32,11 @@
         "query": "SELECT COALESCE((SELECT value FROM sync_state WHERE key='prozorro_last_sync'),'2025-01-01T00:00:00.000000Z'::timestamptz) AS sync_date;",
         "options": {}
       },
-      "id": "75b7e1e6-445f-4092-85e5-14200f9f4ccf",
+      "id": "150fb89f-f631-4065-9f19-08829afac559",
       "name": "Postgres: Get Sync Date",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [
-        -1536,
-        480
-      ],
+      "position": [-1536, 576],
       "credentials": {
         "postgres": {
           "id": "pZUsVvYuYQh5b91f",
@@ -66,28 +57,22 @@
         },
         "options": {}
       },
-      "id": "861090f7-00f1-492a-ba24-98e17e18d06b",
+      "id": "13de21d3-7da3-4bb6-aad6-56087a1ab09f",
       "name": "Set: Prepare Sync Date",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
-      "position": [
-        -1328,
-        480
-      ]
+      "position": [-1328, 576]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "let v = ($json.syncDate ?? '2025-01-01T00:00:00.000000Z').toString().trim();\nif (/\\.\\d{3}Z$/.test(v)) v = v.replace('Z','000Z');\nv = v.replace(/\\s+/g,'');\nreturn { json: { ...$json, formattedSyncDate: v } };"
       },
-      "id": "41f17215-1479-4d2c-9801-d9c7c8d7e0ab",
+      "id": "b8f1f166-70ba-4928-b770-4edad8dfb57e",
       "name": "Normalize syncDate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -1136,
-        480
-      ]
+      "position": [-1136, 576]
     },
     {
       "parameters": {
@@ -101,55 +86,43 @@
           "timeout": 60000
         }
       },
-      "id": "88636e4f-7c55-4431-85e6-e03246be5370",
+      "id": "6ff9d84d-628c-44ea-9ee2-4ed6795b876a",
       "name": "HTTP: Get Auction List",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -912,
-        480
-      ]
+      "position": [-912, 576]
     },
     {
       "parameters": {
         "jsCode": "const list = $items('HTTP: Get Auction List').map(i=>i.json);\nconst dateItem = $('Normalize syncDate').first();\nconst formatted = dateItem?.json?.formattedSyncDate ?? '2025-01-01T00:00:00.000000Z';\nreturn list.map(o=>({ json: { ...o, formattedSyncDate: formatted } }));"
       },
-      "id": "ff4bab58-6598-493f-bada-29cf3df1b409",
+      "id": "641e654a-0afc-4a1e-ac9d-467e2deb7ac4",
       "name": "Code: Add formattedSyncDate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -672,
-        480
-      ]
+      "position": [-672, 576]
     },
     {
       "parameters": {
         "workflowId": "7bG3NSoITuCiSmu9",
         "options": {}
       },
-      "id": "496fd64c-6f9b-4200-aa60-9e951c88e594",
+      "id": "7002145e-092e-45e5-8e08-0fe37c658fbb",
       "name": "Execute Workflow: ProcessPage",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
-      "position": [
-        -496,
-        480
-      ],
+      "position": [-496, 576],
       "notesInFlow": true
     },
     {
       "parameters": {
         "jsCode": "const list = $items('HTTP: Get Auction List').map(i=>i.json);\nif (!list.length) {\n  const nowIso = new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n  return [{ json: { count: 0, nextSyncDate: nowIso } }];\n}\nconst last = list[list.length-1];\nconst dm = last.dateModified ?? last.date_modified;\nconst d = new Date(dm);\nif (isNaN(d.getTime())){\n  const nowIso = new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n  return [{ json: { count: list.length, nextSyncDate: nowIso } }];\n}\nd.setMilliseconds(d.getMilliseconds()+1);\nconst iso = d.toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\nreturn [{ json: { count: list.length, nextSyncDate: iso } }];"
       },
-      "id": "08319b3a-440a-4feb-83e2-ab9f59406812",
+      "id": "7cff772e-47f1-4a93-8212-0f77aa82c0ea",
       "name": "Compute Next Sync Date",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        128,
-        480
-      ]
+      "position": [128, 576]
     },
     {
       "parameters": {
@@ -163,14 +136,11 @@
           ]
         }
       },
-      "id": "abbbe2f1-47bc-48ec-97a7-31267d9d292a",
+      "id": "db1914fb-d3df-447f-ace6-253ddd6fa80e",
       "name": "Were there 100 results?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        368,
-        480
-      ]
+      "position": [368, 576]
     },
     {
       "parameters": {
@@ -185,14 +155,11 @@
         },
         "options": {}
       },
-      "id": "228177f0-6217-4bbe-9ac3-deb411491ba0",
+      "id": "f403c9cc-a6d2-4d73-b404-d78a0df7bcd4",
       "name": "Set: New Sync Date",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
-      "position": [
-        0,
-        -96
-      ]
+      "position": [0, 0]
     },
     {
       "parameters": {
@@ -200,14 +167,11 @@
         "query": "INSERT INTO sync_state (key,value) VALUES ('prozorro_last_sync',$1::timestamptz)\nON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value;",
         "options": {}
       },
-      "id": "b6c4cc30-df85-447e-b1e8-ad0480022c6b",
+      "id": "96c9690f-6c9d-4be9-bab0-d98452504787",
       "name": "Postgres: Save Last Date",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [
-        592,
-        576
-      ],
+      "position": [592, 672],
       "credentials": {
         "postgres": {
           "id": "pZUsVvYuYQh5b91f",
@@ -217,14 +181,11 @@
     },
     {
       "parameters": {},
-      "id": "b278e0ae-f6dc-4318-bc7b-44a8aec7edf2",
+      "id": "aef4bebf-23b6-4a3e-8e8e-c0609d224119",
       "name": "End of Loop",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [
-        784,
-        576
-      ]
+      "position": [784, 672]
     }
   ],
   "connections": {
