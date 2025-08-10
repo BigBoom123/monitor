@@ -6,11 +6,11 @@
           "reset": false
         }
       },
-      "id": "4696f8dd-74d8-4ff8-a1d7-d7c4336b2d0d",
+      "id": "9ee12651-2b02-4c32-a015-0792d8d06c60",
       "name": "Loop Over Items",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [-112, 208]
+      "position": [-272, 128]
     },
     {
       "parameters": {
@@ -19,22 +19,22 @@
           "timeout": 60000
         }
       },
-      "id": "57aa47be-c590-421e-9703-7d2567f3e219",
+      "id": "254adc18-1990-40eb-8a71-404cb9be984d",
       "name": "HTTP: Get Auction Details",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [112, 208]
+      "position": [-48, 128]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "const data = $json;\nconst locality = (data.sellingEntity?.address?.locality?.uk_UA || '').toLowerCase();\nconst targetLocalities = ['київ','вишгород','ірпінь'];\nconst isMatch = targetLocalities.includes(locality);\nreturn { json: { ...data, isRegionMatch: isMatch } };"
       },
-      "id": "41e93dd8-5be8-4ace-a400-864524e48c3b",
+      "id": "4ed905dd-667b-4bd3-b6cf-587d2933760d",
       "name": "Проверка Региона",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [320, 208]
+      "position": [160, 128]
     },
     {
       "parameters": {
@@ -60,11 +60,11 @@
           ]
         }
       },
-      "id": "62915872-07f0-44b3-8044-de83137a60c0",
+      "id": "ca54bbd5-4679-44ae-9352-6d5aeb527f1b",
       "name": "Filter Auctions",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [512, 208]
+      "position": [352, 128]
     },
     {
       "parameters": {
@@ -87,11 +87,11 @@
         },
         "options": {}
       },
-      "id": "8a1a84d3-adb1-47c7-9898-716fee61a7aa",
+      "id": "cd03925b-5144-4ef6-9dfd-ce0af99bf687",
       "name": "Set: Telegram Payload",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
-      "position": [720, 112]
+      "position": [560, 32]
     },
     {
       "parameters": {
@@ -99,11 +99,11 @@
         "text": "🔥 *Новий аукціон Prozorro.Sale!*\n\n*Назва:* {{$json.titleText}}\n*Стартова ціна:* {{$json.priceText}}\n*Посилання:* {{$json.auctionUrl}}",
         "additionalFields": {}
       },
-      "id": "0f685752-af18-47a7-9c3d-5484d3a7478f",
+      "id": "619b1720-64ea-4258-bf7a-104238dc3188",
       "name": "Send Telegram Message",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [912, 112],
+      "position": [752, 32],
       "webhookId": "5dd5c2d7-1468-49e8-8c04-42803db6b9d2",
       "credentials": {
         "telegramApi": {
@@ -120,11 +120,11 @@
           "queryReplacement": "={{ [\n  $('HTTP: Get Auction Details').item.json[\"_id\"] ?? $('HTTP: Get Auction Details').item.json[\"auctionId\"] ?? $('HTTP: Get Auction Details').item.json[\"id\"],\n  $('HTTP: Get Auction Details').item.json[\"auctionId\"] ?? $('HTTP: Get Auction Details').item.json[\"_id\"],\n  ( $('HTTP: Get Auction Details').item.json[\"dateModified\"] || $('HTTP: Get Auction Details').item.json[\"date_modified\"] ) ? new Date( $('HTTP: Get Auction Details').item.json[\"dateModified\"] || $('HTTP: Get Auction Details').item.json[\"date_modified\"] ).toISOString() : null,\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"title\"] ?? null ),\n  $('HTTP: Get Auction Details').item.json[\"value\"]?.[\"amount\"] ?? null,\n  $('HTTP: Get Auction Details').item.json[\"value\"]?.[\"currency\"] ?? null,\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"tenderPeriod\"] ?? $('HTTP: Get Auction Details').item.json[\"tender_period\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"sellingEntity\"] ?? $('HTTP: Get Auction Details').item.json[\"selling_entity\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"registrationDetails\"] ?? $('HTTP: Get Auction Details').item.json[\"registration_details\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"classification\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"qualificationPeriod\"] ?? $('HTTP: Get Auction Details').item.json[\"qualification_period\"] ?? null ),\n  $('HTTP: Get Auction Details').item.json[\"status\"] ?? null,\n  $('HTTP: Get Auction Details').item.json[\"registrationStatus\"] ?? $('HTTP: Get Auction Details').item.json[\"registration_status\"] ?? null,\n  $('HTTP: Get Auction Details').item.json[\"registrationId\"] ?? $('HTTP: Get Auction Details').item.json[\"registration_id\"] ?? null,\n  ( $('HTTP: Get Auction Details').item.json[\"registrationDate\"] || $('HTTP: Get Auction Details').item.json[\"registration_date\"] ) ? new Date( $('HTTP: Get Auction Details').item.json[\"registrationDate\"] || $('HTTP: Get Auction Details').item.json[\"registration_date\"] ).toISOString() : null,\n  JSON.stringify( $('HTTP: Get Auction Details').item.json )\n] }}"
         }
       },
-      "id": "85938c67-020a-43cd-8efe-6efc68b3f359",
+      "id": "96dac513-192a-4ae2-beeb-e3d2bd01dfe7",
       "name": "Postgres: Upsert Procedure",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [912, 304],
+      "position": [752, 224],
       "credentials": {
         "postgres": {
           "id": "pZUsVvYuYQh5b91f",
@@ -134,19 +134,19 @@
     },
     {
       "parameters": {},
-      "id": "4baeffba-3686-4028-a34d-82a44d2f36f5",
+      "id": "336d9f04-bfe9-4624-a9da-c6ee805649f7",
       "name": "Next Batch",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1120, 304]
+      "position": [960, 224]
     },
     {
       "parameters": {},
-      "id": "3b3baaac-3466-4678-83b2-c56baa42fec7",
+      "id": "48ab38fa-4c3c-4ac3-ad7f-a171b563ff25",
       "name": "End",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [0, 0]
+      "position": [-160, -80]
     },
     {
       "parameters": {
@@ -154,8 +154,8 @@
       },
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
-      "position": [-448, 208],
-      "id": "f510353a-6ef5-463b-9ca4-04fa9a48ef35",
+      "position": [-608, 128],
+      "id": "874237fc-40fd-4efb-9877-796125a19ed4",
       "name": "When Executed by Another Workflow"
     }
   ],
