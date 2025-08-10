@@ -14,7 +14,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "CREATE TABLE IF NOT EXISTS sync_state ( key TEXT PRIMARY KEY, value TIMESTAMPTZ );\nCREATE TABLE IF NOT EXISTS procedures (\n  _id TEXT PRIMARY KEY,\n  auction_id TEXT,\n  date_modified TIMESTAMPTZ,\n  title JSONB,\n  value_amount NUMERIC,\n  value_currency TEXT,\n  tender_period JSONB,\n  selling_entity JSONB,\n  raw JSONB\n);",
+        "query": "CREATE TABLE IF NOT EXISTS sync_state ( key TEXT PRIMARY KEY, value TIMESTAMPTZ );\nCREATE TABLE IF NOT EXISTS procedures (\n  _id TEXT PRIMARY KEY,\n  auction_id TEXT,\n  date_modified TIMESTAMPTZ,\n  title JSONB,\n  value_amount NUMERIC,\n  value_currency TEXT,\n  tender_period JSONB,\n  selling_entity JSONB,\n  registration_details JSONB,\n  classification JSONB,\n  qualification_period JSONB,\n  status TEXT,\n  registration_status TEXT,\n  registration_id TEXT,\n  registration_date TIMESTAMPTZ,\n  raw JSONB\n);",
         "options": {}
       },
       "id": "9507a737-d8a8-42a0-916f-e8ac397bc704",
