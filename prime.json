@@ -197,7 +197,7 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const sd = new Date($json.syncDate || '2025-01-01T00:00:00.000000Z');\nif (isNaN(sd.getTime())) throw new Error('Invalid syncDate: '+$json.syncDate);\nfunction isoMonthStart(d){\n  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();\n}\nfunction isoNextMonthStart(d){\n  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 1)).toISOString();\n}\nconst monthStart = isoMonthStart(sd);\nlet monthEndNorm = $json.monthEnd || isoNextMonthStart(sd);\n// current month start\nconst now = new Date();\nconst currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();\nconst isLivePhase = new Date(monthEndNorm) > new Date(currentMonthStart);\nconst nextMonthStart = isoNextMonthStart(new Date(monthStart));\nreturn { json: { ...$json, monthStart, monthEnd: monthEndNorm, monthEndNorm, nextMonthStart, currentMonthStart, isLivePhase } };\n"
+        "jsCode": "const sd = new Date($json.syncDate || '2025-01-01T00:00:00.000000Z');\nif (isNaN(sd.getTime())) throw new Error('Invalid syncDate: ' + $json.syncDate);\n\nfunction isoMonthStart(d){\n  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();\n}\n\nfunction isoNextMonthStart(d){\n  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString();\n}\n\nconst monthStart = isoMonthStart(sd);\n// Эта строка - главное исправление. Теперь граница месяца всегда\n// вычисляется на основе даты синхронизации, а не берется из базы.\nlet monthEndNorm = isoNextMonthStart(sd);\n\n// current month start\nconst now = new Date();\nconst currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();\nconst isLivePhase = new Date(monthEndNorm) > new Date(currentMonthStart);\nconst nextMonthStart = isoNextMonthStart(new Date(monthStart));\n\nreturn { json: { ...$json, monthStart, monthEnd: monthEndNorm, monthEndNorm, nextMonthStart, currentMonthStart, isLivePhase } };"
       },
       "id": "00813c11-9da5-4192-afa6-fc638fc4bcb7",
       "name": "Code: Compute Month Bounds",
@@ -214,7 +214,8 @@
       "name": "Code: Filter to Month Window",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-1200, 464]
+      "position": [-1200, 464],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
