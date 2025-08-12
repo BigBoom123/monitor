@@ -6,7 +6,7 @@
           "reset": false
         }
       },
-      "id": "9ee12651-2b02-4c32-a015-0792d8d06c60",
+      "id": "05ab86e7-9bdf-40fb-ac13-1fc5427dbde2",
       "name": "Loop Over Items",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
@@ -19,21 +19,10 @@
           "timeout": 60000
         }
       },
-      "id": "254adc18-1990-40eb-8a71-404cb9be984d",
+      "id": "0a7f16b5-0c01-4279-9be9-4a2f609621fe",
       "name": "HTTP: Get Auction Details",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [-48, 128]
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "const data = $json;\nconst locality = (data.sellingEntity?.address?.locality?.uk_UA || '').toLowerCase();\nconst targetLocalities = ['київ','вишгород','ірпінь'];\nconst isMatch = targetLocalities.includes(locality);\nreturn { json: { ...data, isRegionMatch: isMatch } };"
-      },
-      "id": "4ed905dd-667b-4bd3-b6cf-587d2933760d",
-      "name": "Проверка Региона",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
       "position": [160, 128]
     },
     {
@@ -41,30 +30,16 @@
         "conditions": {
           "boolean": [
             {
-              "value1": "={{$json.isRegionMatch}}",
-              "value2": true
-            }
-          ],
-          "dateTime": [
-            {
-              "value1": "={{$json.tenderPeriod.startDate}}",
-              "value2": "={{$now}}"
-            }
-          ],
-          "number": [
-            {
-              "value1": "={{$json.value.amount}}",
-              "operation": "smallerEqual",
-              "value2": 4000000
+              "value1": "={{$json.to_notify}}"
             }
           ]
         }
       },
-      "id": "ca54bbd5-4679-44ae-9352-6d5aeb527f1b",
+      "id": "8ed6e72a-711d-40f7-aa57-4dad853bfabd",
       "name": "Filter Auctions",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [352, 128]
+      "position": [560, 128]
     },
     {
       "parameters": {
@@ -82,29 +57,33 @@
             {
               "name": "auctionUrl",
               "value": "=https://prozorro.sale/auction/{{$json.auctionId}}"
+            },
+            {
+              "name": "Опис",
+              "value": "={{ $json.items[0]?.description?.uk_UA ?? 'Опис відсутній' }}"
             }
           ]
         },
         "options": {}
       },
-      "id": "cd03925b-5144-4ef6-9dfd-ce0af99bf687",
+      "id": "695b48da-4082-4fb1-83dc-f9dcbe1b8eb5",
       "name": "Set: Telegram Payload",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
-      "position": [560, 32]
+      "position": [1184, 32]
     },
     {
       "parameters": {
         "chatId": "-1002767927753",
-        "text": "🔥 *Новий аукціон Prozorro.Sale!*\n\n*Назва:* {{$json.titleText}}\n*Стартова ціна:* {{$json.priceText}}\n*Посилання:* {{$json.auctionUrl}}",
+        "text": "🔥 *Новий аукціон Prozorro.Sale!*\n    *Назва:*\n    {{$json.titleText}}\n    \n    *Опис:*\n    {{$json.descriptionText}}\n    \n    *Стартова ціна:*\n    {{$json.priceText}}\n   \n    *Посилання:*\n    {{$json.auctionUrl}}",
         "additionalFields": {}
       },
-      "id": "619b1720-64ea-4258-bf7a-104238dc3188",
+      "id": "2c9389cd-9140-4663-acdd-166dbd3b7202",
       "name": "Send Telegram Message",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [752, 32],
-      "webhookId": "5dd5c2d7-1468-49e8-8c04-42803db6b9d2",
+      "position": [1376, 32],
+      "webhookId": "660f874f-3c75-40b4-89a8-4d3cb4e98faf",
       "credentials": {
         "telegramApi": {
           "id": "LuJyyclSEglS2sAm",
@@ -120,11 +99,11 @@
           "queryReplacement": "={{ [\n  $('HTTP: Get Auction Details').item.json[\"_id\"] ?? $('HTTP: Get Auction Details').item.json[\"auctionId\"] ?? $('HTTP: Get Auction Details').item.json[\"id\"],\n  $('HTTP: Get Auction Details').item.json[\"auctionId\"] ?? $('HTTP: Get Auction Details').item.json[\"_id\"],\n  ( $('HTTP: Get Auction Details').item.json[\"dateModified\"] || $('HTTP: Get Auction Details').item.json[\"date_modified\"] ) ? new Date( $('HTTP: Get Auction Details').item.json[\"dateModified\"] || $('HTTP: Get Auction Details').item.json[\"date_modified\"] ).toISOString() : null,\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"title\"] ?? null ),\n  $('HTTP: Get Auction Details').item.json[\"value\"]?.[\"amount\"] ?? null,\n  $('HTTP: Get Auction Details').item.json[\"value\"]?.[\"currency\"] ?? null,\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"tenderPeriod\"] ?? $('HTTP: Get Auction Details').item.json[\"tender_period\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"sellingEntity\"] ?? $('HTTP: Get Auction Details').item.json[\"selling_entity\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"registrationDetails\"] ?? $('HTTP: Get Auction Details').item.json[\"registration_details\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"classification\"] ?? null ),\n  JSON.stringify( $('HTTP: Get Auction Details').item.json[\"qualificationPeriod\"] ?? $('HTTP: Get Auction Details').item.json[\"qualification_period\"] ?? null ),\n  $('HTTP: Get Auction Details').item.json[\"status\"] ?? null,\n  $('HTTP: Get Auction Details').item.json[\"registrationStatus\"] ?? $('HTTP: Get Auction Details').item.json[\"registration_status\"] ?? null,\n  $('HTTP: Get Auction Details').item.json[\"registrationId\"] ?? $('HTTP: Get Auction Details').item.json[\"registration_id\"] ?? null,\n  ( $('HTTP: Get Auction Details').item.json[\"registrationDate\"] || $('HTTP: Get Auction Details').item.json[\"registration_date\"] ) ? new Date( $('HTTP: Get Auction Details').item.json[\"registrationDate\"] || $('HTTP: Get Auction Details').item.json[\"registration_date\"] ).toISOString() : null,\n  JSON.stringify( $('HTTP: Get Auction Details').item.json )\n] }}"
         }
       },
-      "id": "96dac513-192a-4ae2-beeb-e3d2bd01dfe7",
+      "id": "e5eb5d13-9766-42ce-a3b5-b71ed3c483a0",
       "name": "Postgres: Upsert Procedure",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [752, 224],
+      "position": [1168, 224],
       "credentials": {
         "postgres": {
           "id": "pZUsVvYuYQh5b91f",
@@ -134,19 +113,19 @@
     },
     {
       "parameters": {},
-      "id": "336d9f04-bfe9-4624-a9da-c6ee805649f7",
+      "id": "a4c134eb-87a7-42d7-a177-47debdfbade9",
       "name": "Next Batch",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [960, 224]
+      "position": [1376, 224]
     },
     {
       "parameters": {},
-      "id": "48ab38fa-4c3c-4ac3-ad7f-a171b563ff25",
+      "id": "e6919e8f-c4f1-4f08-88c5-e3310cc5c1e7",
       "name": "End",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [-160, -80]
+      "position": [48, -80]
     },
     {
       "parameters": {
@@ -155,8 +134,68 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [-608, 128],
-      "id": "874237fc-40fd-4efb-9877-796125a19ed4",
+      "id": "f3d14d21-f1b8-4196-b5cb-fc897146c0be",
       "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// --- НАСТРОЙКИ ФИЛЬТРА ---\nconst MAX_PRICE = 4000000;\nconst TARGET_LOCALITIES = ['київ', 'вишгород', 'ірпінь'];\nconst TARGET_SELLERS = [];\nconst KEYWORDS_IN_TITLE = [];\nconst EXCLUDED_KEYWORDS_IN_TITLE = ['реклам', 'білборд'];\n// --- КОНЕЦ НАСТРОЕК ---\n\nconst auction = $json;\nconst now = new Date();\n\nfunction get(path, defaultValue = null) {\n  return path.reduce((obj, key) => (obj && obj[key] != null) ? obj[key] : defaultValue, auction);\n}\n\n// --- 1. ГЛАВНЫЙ ФИЛЬТР: АКТУАЛЬНОСТЬ АУКЦИОНА ---\nconst status = get(['status'], '');\nconst tenderEndDateStr = get(['tenderPeriod', 'endDate']);\n\nif (status !== 'active.tendering') {\n  return { json: { ...auction, to_notify: false, reason: `Неверный статус: ${status}` } };\n}\nif (!tenderEndDateStr || new Date(tenderEndDateStr) < now) {\n  return { json: { ...auction, to_notify: false, reason: 'Период подачи заявок истек' } };\n}\n\n// --- 2. ВТОРИЧНЫЕ ФИЛЬТРЫ ПО КРИТЕРИЯМ ---\n\n// Проверка по цене\nif (MAX_PRICE !== null && get(['value', 'amount'], Infinity) > MAX_PRICE) {\n  return { json: { ...auction, to_notify: false, reason: `Цена выше ${MAX_PRICE}` } };\n}\n\n// ИСПРАВЛЕННАЯ Проверка по городу\nif (TARGET_LOCALITIES.length > 0) {\n  const locality = (get(['items', 0, 'address', 'locality', 'uk_UA'], '')).toLowerCase();\n  // Если список городов задан, то у аукциона ДОЛЖЕН быть город и он ДОЛЖЕН быть в списке.\n  if (!locality || !TARGET_LOCALITIES.includes(locality)) {\n    return { json: { ...auction, to_notify: false, reason: `Неподходящий город: '${locality}'` } };\n  }\n}\n\n// Проверка по продавцу\nif (TARGET_SELLERS.length > 0) {\n  const sellerId = get(['sellingEntity', 'identifier', 'id'], '');\n  if (!TARGET_SELLERS.includes(sellerId)) {\n    return { json: { ...auction, to_notify: false, reason: 'Неподходящий продавец' } };\n  }\n}\n\n// Проверка по ключевым словам\nconst title = (get(['title', 'uk_UA'], '')).toLowerCase();\nif (KEYWORDS_IN_TITLE.length > 0) {\n  if (!KEYWORDS_IN_TITLE.some(keyword => title.includes(keyword.toLowerCase()))) {\n    return { json: { ...auction, to_notify: false, reason: 'Нет ключевых слов в названии' } };\n  }\n}\nif (EXCLUDED_KEYWORDS_IN_TITLE.length > 0) {\n  if (EXCLUDED_KEYWORDS_IN_TITLE.some(keyword => title.includes(keyword.toLowerCase()))) {\n    return { json: { ...auction, to_notify: false, reason: 'Присутствует слово-исключение' } };\n  }\n}\n\n// --- ЕСЛИ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ ---\nreturn { json: { ...auction, to_notify: true, reason: 'Совпадение по всем критериям' } };"
+      },
+      "id": "d1c183e5-2591-48f1-93fe-0e7eeaca75b0",
+      "name": "Фильтр для уведомления",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [368, 128]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "151347b9-fe3b-4108-983e-aba0994f6983",
+              "leftValue": "={{ $json._id ?? $json.auctionId ?? $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-64, 256],
+      "id": "e5a684c7-e8b7-4641-80bc-53bb1092bd11",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO filtered_sales_v1 (_id, auction_id, date_modified, title, value_amount, value_currency, tender_period, selling_entity, registration_details, classification, qualification_period, status, registration_status, registration_id, registration_date, raw)\nVALUES ($1, $2, $3::timestamptz, $4::jsonb, $5::numeric, $6::text, $7::jsonb, $8::jsonb, $9::jsonb, $10::jsonb, $11::jsonb, $12::text, $13::text, $14::text, $15::timestamptz, $16::jsonb)\nON CONFLICT (_id) DO UPDATE SET auction_id=EXCLUDED.auction_id, date_modified=EXCLUDED.date_modified, title=EXCLUDED.title, value_amount=EXCLUDED.value_amount, value_currency=EXCLUDED.value_currency, tender_period=EXCLUDED.tender_period, selling_entity=EXCLUDED.selling_entity, registration_details=EXCLUDED.registration_details, classification=EXCLUDED.classification, qualification_period=EXCLUDED.qualification_period, status=EXCLUDED.status, registration_status=EXCLUDED.registration_status, registration_id=EXCLUDED.registration_id, registration_date=EXCLUDED.registration_date, raw=EXCLUDED.raw;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [768, 32],
+      "id": "2b3d27d2-02ec-42d2-96c2-481d5be3a97b",
+      "name": "Filtred",
+      "credentials": {
+        "postgres": {
+          "id": "pZUsVvYuYQh5b91f",
+          "name": "Postgres account"
+        }
+      }
     }
   ],
   "connections": {
@@ -171,7 +210,7 @@
         ],
         [
           {
-            "node": "HTTP: Get Auction Details",
+            "node": "If",
             "type": "main",
             "index": 0
           }
@@ -182,18 +221,7 @@
       "main": [
         [
           {
-            "node": "Проверка Региона",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Проверка Региона": {
-      "main": [
-        [
-          {
-            "node": "Filter Auctions",
+            "node": "Фильтр для уведомления",
             "type": "main",
             "index": 0
           }
@@ -204,12 +232,12 @@
       "main": [
         [
           {
-            "node": "Set: Telegram Payload",
+            "node": "Postgres: Upsert Procedure",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Postgres: Upsert Procedure",
+            "node": "Filtred",
             "type": "main",
             "index": 0
           }
@@ -266,10 +294,51 @@
           }
         ]
       ]
+    },
+    "Фильтр для уведомления": {
+      "main": [
+        [
+          {
+            "node": "Filter Auctions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP: Get Auction Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Next Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtred": {
+      "main": [
+        [
+          {
+            "node": "Set: Telegram Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "pinData": {},
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "b5da3b60b2aef7f21cd63bb95b2dbf30be48f0e39c2c264cd2d36f457483d3a4"
   }
 }
