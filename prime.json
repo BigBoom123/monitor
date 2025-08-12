@@ -2,7 +2,7 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "cf58da7a-2d0e-4d91-8f03-4666cd3ff1ad",
+      "id": "5252452c-370d-4a07-b636-14a8ceaf7b72",
       "name": "Start Manually",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -14,7 +14,7 @@
         "query": "CREATE TABLE IF NOT EXISTS sync_state ( key TEXT PRIMARY KEY, value TIMESTAMPTZ );\nCREATE TABLE IF NOT EXISTS salesfull_v1 (\n  _id TEXT PRIMARY KEY,\n  auction_id TEXT,\n  date_modified TIMESTAMPTZ,\n  title JSONB,\n  value_amount NUMERIC,\n  value_currency TEXT,\n  tender_period JSONB,\n  selling_entity JSONB,\n  registration_details JSONB,\n  classification JSONB,\n  qualification_period JSONB,\n  status TEXT,\n  registration_status TEXT,\n  registration_id TEXT,\n  registration_date TIMESTAMPTZ,\n  raw JSONB\n);",
         "options": {}
       },
-      "id": "5975fa66-9935-41db-bca3-2500494dbccd",
+      "id": "0c36b1e5-ac27-4496-b6d3-233e7f3285ed",
       "name": "Postgres: Migrate",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
@@ -32,7 +32,7 @@
         "query": "WITH last AS (SELECT MAX(date_modified) AS max_dm FROM salesfull_v1)\nSELECT\n  COALESCE(\n    (SELECT value FROM sync_state WHERE key='prozorro_last_sync'),\n    (SELECT max_dm FROM last),\n    '2025-01-01T00:00:00Z'::timestamptz\n  ) AS sync_date,\n  COALESCE(\n    (SELECT value FROM sync_state WHERE key='prozorro_month_end'),\n    date_trunc('month', COALESCE((SELECT max_dm FROM last), '2025-01-01T00:00:00Z'::timestamptz)) + INTERVAL '1 month'\n  ) AS month_end;\n",
         "options": {}
       },
-      "id": "25abec00-a22e-473d-beee-c2e9ad7bfe77",
+      "id": "822b7c77-9756-4a8a-9af0-7307c73210d6",
       "name": "Postgres: Get Sync Date",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
@@ -62,7 +62,7 @@
         },
         "options": {}
       },
-      "id": "5ae05ed2-763f-4b27-bb11-43ca3a79d6ca",
+      "id": "84472094-e312-43a5-8724-8f3e032b5878",
       "name": "Set: Prepare Sync Date",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
@@ -73,7 +73,7 @@
         "mode": "runOnceForEachItem",
         "jsCode": "let v = ($json.syncDate ?? '2025-01-01T00:00:00.000000Z').toString().trim();\nif (/\\.\\d{3}Z$/.test(v)) v = v.replace('Z','000Z');\nv = v.replace(/\\s+/g,'');\nreturn { json: { ...$json, formattedSyncDate: v } };"
       },
-      "id": "a04ffb46-9eac-4626-8f52-70e3c8ef196b",
+      "id": "94dd8d8b-49f0-403a-9370-9b4b32a7e4b6",
       "name": "Normalize syncDate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -91,7 +91,7 @@
           "timeout": 60000
         }
       },
-      "id": "df688952-d064-413b-97b0-b59bfdd731be",
+      "id": "d63d974e-a1ce-499e-8f12-00303d36db40",
       "name": "HTTP: Get Auction List",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
@@ -101,7 +101,7 @@
       "parameters": {
         "jsCode": "const list = $items('HTTP: Get Auction List').map(i=>i.json);\nconst dateItem = $('Normalize syncDate').first();\nconst formatted = dateItem?.json?.formattedSyncDate ?? '2025-01-01T00:00:00.000000Z';\nreturn list.map(o=>({ json: { ...o, formattedSyncDate: formatted } }));"
       },
-      "id": "3954db0d-3999-4691-b795-ef57efcb2f20",
+      "id": "1755dd9a-4590-4dc9-9bd5-d4ff0367dcf5",
       "name": "Code: Add formattedSyncDate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -109,10 +109,10 @@
     },
     {
       "parameters": {
-        "workflowId": "Y0K2vhDtj5ngcXQH",
+        "workflowId": "JMhto9IGq0rSQinb",
         "options": {}
       },
-      "id": "b1540276-61a5-48c4-99bb-1309bfaab759",
+      "id": "e2b3ab83-1fce-4954-b9c5-47b3c220dafe",
       "name": "Execute Workflow: ProcessPage",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
@@ -123,7 +123,7 @@
       "parameters": {
         "jsCode": "const list = $items('HTTP: Get Auction List').map(i=>i.json);\nconst monthEnd = new Date($('Code: Compute Month Bounds').first().json.monthEndNorm).getTime();\nif (!list.length) {\n  const nowIso = new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n  const hitMonthEnd = new Date(nowIso).getTime() >= monthEnd;\n  return [{ json: { count: 0, nextSyncDate: nowIso, hitMonthEnd } }];\n}\nconst last = list[list.length-1];\nconst dm = last.dateModified ?? last.date_modified;\nconst d = new Date(dm);\nif (isNaN(d.getTime())){\n  const nowIso = new Date().toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\n  const hitMonthEnd = new Date(nowIso).getTime() >= monthEnd;\n  return [{ json: { count: list.length, nextSyncDate: nowIso, hitMonthEnd } }];\n}\nd.setMilliseconds(d.getMilliseconds()+1);\nconst iso = d.toISOString().replace(/\\.(\\d{3})Z$/, '.$1000Z');\nconst hitMonthEnd = new Date(iso).getTime() >= monthEnd;\nreturn [{ json: { count: list.length, nextSyncDate: iso, hitMonthEnd } }];\n"
       },
-      "id": "54910a5f-d765-49b2-9564-e227a6cb3d97",
+      "id": "d929adbd-116b-4f9d-9df8-6f0efa33eb0d",
       "name": "Compute Next Sync Date",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -141,7 +141,7 @@
           ]
         }
       },
-      "id": "ec3ed0cf-d450-4d20-91e3-099237f4d94a",
+      "id": "4cb18e55-b619-45b0-86a9-6477e6311494",
       "name": "Were there 100 results?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
@@ -160,11 +160,11 @@
         },
         "options": {}
       },
-      "id": "c1ea6acb-d773-40a0-827f-a50ad9fc06a1",
+      "id": "b3c074e8-2a6d-4105-84ff-d86d65a7132a",
       "name": "Set: New Sync Date",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
-      "position": [-656, 0]
+      "position": [-1392, 784]
     },
     {
       "parameters": {
@@ -174,11 +174,11 @@
           "queryReplacement": "={{ [ $json.syncDate ?? $json.nextSyncDate ] }}"
         }
       },
-      "id": "a2aa18b6-1c60-482b-a83a-e63601a209ef",
+      "id": "0a4cace7-1153-49e3-b232-546a580f78a7",
       "name": "Postgres: Save Last Date",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [176, 640],
+      "position": [384, 640],
       "credentials": {
         "postgres": {
           "id": "pZUsVvYuYQh5b91f",
@@ -188,18 +188,18 @@
     },
     {
       "parameters": {},
-      "id": "d80d0a57-a7a7-4600-b50c-93bc7a5cb096",
+      "id": "3468c48f-f705-4e26-94a3-53fa88287a40",
       "name": "End of Loop",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [608, 672]
+      "position": [816, 672]
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
         "jsCode": "const sd = new Date($json.syncDate || '2025-01-01T00:00:00.000000Z');\nif (isNaN(sd.getTime())) throw new Error('Invalid syncDate: ' + $json.syncDate);\n\nfunction isoMonthStart(d){\n  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();\n}\n\nfunction isoNextMonthStart(d){\n  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString();\n}\n\nconst monthStart = isoMonthStart(sd);\n// Эта строка - главное исправление. Теперь граница месяца всегда\n// вычисляется на основе даты синхронизации, а не берется из базы.\nlet monthEndNorm = isoNextMonthStart(sd);\n\n// current month start\nconst now = new Date();\nconst currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();\nconst isLivePhase = new Date(monthEndNorm) > new Date(currentMonthStart);\nconst nextMonthStart = isoNextMonthStart(new Date(monthStart));\n\nreturn { json: { ...$json, monthStart, monthEnd: monthEndNorm, monthEndNorm, nextMonthStart, currentMonthStart, isLivePhase } };"
       },
-      "id": "00813c11-9da5-4192-afa6-fc638fc4bcb7",
+      "id": "ffcc8682-cff6-471f-888d-538f648126b2",
       "name": "Code: Compute Month Bounds",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -210,7 +210,7 @@
         "mode": "runOnceForEachItem",
         "jsCode": "// Allow all in LIVE mode; otherwise keep only dateModified < monthEnd\nconst monthEnd = $('Code: Compute Month Bounds').first().json.monthEndNorm;\nconst isLive = $('Code: Compute Month Bounds').first().json.isLivePhase;\nconst dm = new Date(($json.dateModified ?? $json.date_modified));\nif (isLive) return $json;\nif (!dm || isNaN(dm.getTime())) return null;\nif (dm.toISOString() < new Date(monthEnd).toISOString()) return $json;\nreturn null; // drop outside month window\n"
       },
-      "id": "ff60adc8-c1f2-49a7-8d79-cb96c6f77b88",
+      "id": "886dee0f-d723-49a7-8323-0046d16452b0",
       "name": "Code: Filter to Month Window",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -228,7 +228,7 @@
           ]
         }
       },
-      "id": "802387a4-4308-406f-b0fe-201f827b8494",
+      "id": "3aabc29b-4935-4bba-a582-1afe9eace903",
       "name": "IF: Hit Month End?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
@@ -247,11 +247,11 @@
         },
         "options": {}
       },
-      "id": "ff0e643b-709a-4aec-8ce5-e72d81da69a6",
+      "id": "54f01b6e-e379-4166-bcdd-7bfdb9210b6c",
       "name": "Set: Sync To Month End",
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
-      "position": [-64, 336]
+      "position": [144, 336]
     },
     {
       "parameters": {
@@ -259,11 +259,31 @@
         "query": "INSERT INTO sync_state (key,value) VALUES ('prozorro_month_end', ='{{ $('Code: Compute Month Bounds').first().json.nextMonthStart }}'::timestamptz )\nON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value;",
         "options": {}
       },
-      "id": "9e165536-824c-44e3-914e-b595373a7a7f",
+      "id": "cea775d8-6571-49d8-bf79-21a71954faf8",
       "name": "Postgres: Save Month End",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2,
-      "position": [384, 336],
+      "position": [592, 336],
+      "credentials": {
+        "postgres": {
+          "id": "pZUsVvYuYQh5b91f",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO sync_state (key,value) VALUES ('prozorro_last_sync',$1::timestamptz)\nON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value;",
+        "options": {
+          "queryReplacement": "={{ [ $json.syncDate ?? $json.nextSyncDate ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-1584, 784],
+      "id": "6af494f7-3c47-49f6-9c2e-aa5683dde719",
+      "name": "Save_date_100_items_and_Continue",
       "credentials": {
         "postgres": {
           "id": "pZUsVvYuYQh5b91f",
@@ -376,7 +396,7 @@
       "main": [
         [
           {
-            "node": "Set: New Sync Date",
+            "node": "Save_date_100_items_and_Continue",
             "type": "main",
             "index": 0
           }
@@ -473,6 +493,17 @@
         [
           {
             "node": "End of Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save_date_100_items_and_Continue": {
+      "main": [
+        [
+          {
+            "node": "Set: New Sync Date",
             "type": "main",
             "index": 0
           }
